@@ -1,0 +1,5 @@
+This file lists all dependencies of this project and its license (in full form if not stated in header file).
+
+SDL2/SDL2main uses the zlib license: check in headers
+SDL2_ttf uses the zlib license: check in headers
+SDL2_image uses the zlib license: check in headers
