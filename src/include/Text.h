@@ -7,4 +7,6 @@ void LoadText(Text* text, int fontSize, char* srcFilename);
 
 void CreateText(Text* text, char* textLit, int wrapWidth, SDL_Colour colour);
 
+int GetTextSize(Text* text, char* textLit, int measureWidth);
+
 #endif

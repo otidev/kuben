@@ -10,7 +10,7 @@ int InitWindow(Window* window, int width, int height, char* name) {
 		return 1;
 	}
 
-	if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG) == 0) {
+	if (IMG_Init(IMG_INIT_TIF | IMG_INIT_PNG) == 0) {
 		fprintf(stderr, "Error: Could not init SDL_image: %s", SDL_GetError());
 		return 1;
 	}

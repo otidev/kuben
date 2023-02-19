@@ -23,7 +23,9 @@ add_executable(
 	src/Text.c
 	src/UserInput.c
 	src/Selection.c
+	src/Resources.c
 	src/Program.c
+	src/Disk.c
 	src/Sprite.c
 	src/Window.c
 	src/UI.c

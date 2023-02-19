@@ -12,3 +12,9 @@ void CreateText(Text* text, char* textLit, int wrapWidth, SDL_Colour colour) {
 
 	SDL_FreeSurface(surf);
 }
+
+int GetTextSize(Text* text, char* textLit, int measureWidth) {
+	int lengthOfText;
+	TTF_MeasureUTF8(text->font, textLit, measureWidth, &lengthOfText, 0);
+	return lengthOfText;
+}
