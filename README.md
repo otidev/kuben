@@ -8,7 +8,7 @@ Kuben is an SDL2 program for making hitboxes aligned to a pixel grid, saved as i
 
 ## Usage
 
-While Kuben is not inherently a command-line program, running it in a traditional terminal environment is advised, as some of the warnings and error go to `stderr`.
+While Kuben is not inherently a command-line program, running it in a traditional terminal environment is advised, as some of the warnings and errors go to `stderr`.
 
 ```
 Usage: ./kuben <srcFile> <frameWidth> <frameHeight> <outFile>
