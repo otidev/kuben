@@ -33,7 +33,6 @@ Box
 
 ## Things to take not of
 
-- Boxes are arranged back to back
 - Because the number of boxes are 1 byte long, only 256 total boxes can be made
 - There can be a maximum of  4,294,967,295 frames in the program. (unsigned int)
 - Dimensions of the box (X,Y,W,H) are stored in *signed int*s (4 bytes long, negative and positive)
