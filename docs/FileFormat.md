@@ -1,6 +1,16 @@
 # .kuben File Format
 
-Kuben uses a special file format with the ending ".kuben". This is the layout:
+Kuben uses a special file format with the ending ".kuben", and is laid out very linearly. This is the layout:
+
+```
+example.kuben
+
+Header
+│
+Box
+│
+Box
+```
 
 ## Header
 
@@ -21,7 +31,7 @@ Kuben uses a special file format with the ending ".kuben". This is the layout:
 | 6 in box | 4   | Height of box | Height of box (in pixels) |
 | 7 in box | 16   | Colour | The colour of the box (arranged RGBA8888) |
 
-## Further information
+## Things to take not of
 
 - Boxes are arranged back to back
 - Because the number of boxes are 1 byte long, only 256 total boxes can be made
