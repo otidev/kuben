@@ -9,7 +9,7 @@ Kuben uses a special file format with the ending ".kuben". This is the layout:
 | 1   | 4   | Magic number | The magic number of the .kuben file (KU 0x17 0x01) |
 | 2   | 1   | Number of boxes | The number of boxes in the program |
 
-## Body
+## Box
 
 | Field No. | Length (bytes) | Field | Description |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Kuben uses a special file format with the ending ".kuben". This is the layout:
 
 ## Loading data from .kuben files
 
-Loading data from .kuben is simple; here's an example written in C:
+Loading data from a .kuben file is simple; here's an example written in C:
 
 ```
 #include <stdio.h>
