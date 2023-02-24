@@ -153,8 +153,6 @@ void ChangeBoxColour(Box* box, WindowState state) {
 			}
 		}
 
-		printf("i: %d", i);
-
 		if (i == 3) {
 			globalWindow->state = STATE_NORMAL;
 			return;

@@ -176,7 +176,6 @@ int main(int argc, char** argv) {
 
 		imageDestRect.w = frameWidth * zoomFactor;
 		imageDestRect.h = frameHeight * zoomFactor;
-		printf("%d\n", GetFrame(&editSprite));
 
 
 		RedrawRect(rects, &paintedRect, zoomFactor);
@@ -194,8 +193,6 @@ int main(int argc, char** argv) {
 			boxInfoTextEmpty = true;
 		}
 		CreateText(&boxInfoText, rectInfoString, 600, (SDL_Colour){255, 255, 255, 255});
-
-		printf("%s", window.textInput);
 
 		boxInfoText.sprite.rect.y = globalWindow->height - 75;
 		
