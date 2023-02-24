@@ -1,4 +1,8 @@
 #include "UI.h"
+#include "UserInput.h"
+
+UIBox topBarRect;
+UIBox bottomBarRect;
 
 Vec2 TransposePixelGrid(Vec2 pixel, float gridSizeW, float gridSizeH) {
 	Vec2 transposed = (Vec2){0};
@@ -14,18 +18,18 @@ Vec2 TransposeGridPixel(Vec2 pixel, float gridSizeW, float gridSizeH, float offs
 	return transposed;
 }
 
-void DrawGrid(SDL_FRect rect, int widthPixel, int heightPixel) {
+void DrawGrid(SDL_FRect rect, int widthOfPixel, int heightOfPixel) {
 	SDL_SetRenderDrawBlendMode(globalWindow->renderer, SDL_BLENDMODE_BLEND);
 
 	// Draw horizontal lines
-	for (int i = widthPixel; i < rect.w; i += widthPixel) {
+	for (int i = widthOfPixel; i < rect.w; i += widthOfPixel) {
 		SDL_SetRenderDrawColor(globalWindow->renderer, 128, 128, 128, 63);
 		SDL_RenderDrawLineF(globalWindow->renderer, rect.x + i, rect.y, rect.x + i, rect.y + rect.h);
 		SDL_SetRenderDrawColor(globalWindow->renderer, 255, 255, 255, 255);
 	}
 
 	// Draw vertical lines
-	for (int i = heightPixel; i < rect.h; i += heightPixel) {
+	for (int i = heightOfPixel; i < rect.h; i += heightOfPixel) {
 		SDL_SetRenderDrawColor(globalWindow->renderer, 128, 128, 128, 128);
 		SDL_RenderDrawLineF(globalWindow->renderer, rect.x, rect.y + i, rect.x + rect.w, rect.y + i);
 		SDL_SetRenderDrawColor(globalWindow->renderer, 255, 255, 255, 255);
@@ -65,7 +69,7 @@ void DrawPaintRect(Box* box, Sprite* editSprite, int zoomX, int zoomY) {
 	SDL_SetRenderDrawColor(globalWindow->renderer, 0x4c, 0x00, 0xb0, 255);
 }
 
-static void DrawUIBoxAndOutline(UIBox* UIBox, SDL_Colour* outlineColour) {
+static void DrawUIBoxAndOutline(UIBox* UIBox, SDL_Colour* outlineColour, Box* paintedRect) {
 	SDL_SetRenderDrawColor(globalWindow->renderer, UIBox->colour.r, UIBox->colour.g, UIBox->colour.b, 255);
 	SDL_RenderFillRectF(globalWindow->renderer, &UIBox->rect);
 	if (PointRectCollF(&UIBox->rect, &globalWindow->mousePos)) {
@@ -79,13 +83,16 @@ static void DrawUIBoxAndOutline(UIBox* UIBox, SDL_Colour* outlineColour) {
 	}
 }
 
-void DrawUIRects(int infoTextHeight, Text* boxInfo, bool boxInfoEmpty) {
+void DrawUIRects(int infoTextHeight, Text* boxInfo, bool boxInfoEmpty, Box* paintedRect) {
 	int lengthOfHex = GetTextSize(boxInfo, "00", 1000);
-	UIBox topBarRect = (UIBox){(SDL_FRect){0, 0, 600, infoTextHeight + 3}, (SDL_Colour){0x5c, 0x00, 0xc0, 0x00}};
-	UIBox bottomBarRect = (UIBox){(SDL_FRect){0, globalWindow->height - 75, 600, 75}, (SDL_Colour){0x5c, 0x00, 0xc0, 0x00}};
-	UIBox colourInfoRectR = (UIBox){(SDL_FRect){GetTextSize(boxInfo, "Colours:  0", 10000), boxInfo->sprite.rect.y + (18 * 3 - 5), lengthOfHex, 18}, (SDL_Colour){0x47, 0x00, 0x95, 0x00}};
-	UIBox colourInfoRectG = (UIBox){(SDL_FRect){GetTextSize(boxInfo, "Colours:  0x00 0x", 1000), boxInfo->sprite.rect.y + (18 * 3 - 5), lengthOfHex, 18}, (SDL_Colour){0x47, 0x00, 0x95, 0x00}};
-	UIBox colourInfoRectB = (UIBox){(SDL_FRect){GetTextSize(boxInfo, "Colours:  0x00 0x00 0x ", 1000), boxInfo->sprite.rect.y + (18 * 3 - 5), lengthOfHex, 18}, (SDL_Colour){0x47, 0x00, 0x95, 0x00}};
+	
+	topBarRect = (UIBox){(SDL_FRect){0, 0, 600, infoTextHeight + 3}, (SDL_Colour){0x5c, 0x00, 0xc0, 0x00}};
+	bottomBarRect = (UIBox){(SDL_FRect){0, globalWindow->height - 75, 600, 75}, (SDL_Colour){0x5c, 0x00, 0xc0, 0x00}};
+	
+	UIBox colourInfoRectR = (UIBox){(SDL_FRect){GetTextSize(boxInfo, "Colours: 0x", 1000), boxInfo->sprite.rect.y + (18 * 3 - 5), lengthOfHex, 18}, (SDL_Colour){0x47, 0x00, 0x95, 0x00}};
+	UIBox colourInfoRectG = (UIBox){(SDL_FRect){GetTextSize(boxInfo, "Colours: 0x00, 0x", 1000), boxInfo->sprite.rect.y + (18 * 3 - 5), lengthOfHex, 18}, (SDL_Colour){0x47, 0x00, 0x95, 0x00}};
+	UIBox colourInfoRectB = (UIBox){(SDL_FRect){GetTextSize(boxInfo, "Colours: 0x00, 0x00, 0x", 1000), boxInfo->sprite.rect.y + (18 * 3 - 5), lengthOfHex, 18}, (SDL_Colour){0x47, 0x00, 0x95, 0x00}};
+	
 	SDL_Colour infoRectOutline = (SDL_Colour){190, 169, 208, 0};
 
 	SDL_SetRenderDrawColor(globalWindow->renderer, topBarRect.colour.r, topBarRect.colour.g, topBarRect.colour.b, 255);
@@ -94,9 +101,17 @@ void DrawUIRects(int infoTextHeight, Text* boxInfo, bool boxInfoEmpty) {
 	SDL_RenderFillRectF(globalWindow->renderer, &bottomBarRect.rect);
 
 	if (!boxInfoEmpty) {
-		DrawUIBoxAndOutline(&colourInfoRectR, &infoRectOutline);
-		DrawUIBoxAndOutline(&colourInfoRectG, &infoRectOutline);
-		DrawUIBoxAndOutline(&colourInfoRectB, &infoRectOutline);
+		DrawUIBoxAndOutline(&colourInfoRectR, &infoRectOutline, paintedRect);
+		if (PointRectCollF(&colourInfoRectR.rect, &globalWindow->mousePos) && globalWindow->mouseButtons[0])
+			ChangeBoxColour(paintedRect, STATE_BOXCOLOUR_R);
+		
+		DrawUIBoxAndOutline(&colourInfoRectG, &infoRectOutline, paintedRect);
+		if (PointRectCollF(&colourInfoRectG.rect, &globalWindow->mousePos) && globalWindow->mouseButtons[0])
+			ChangeBoxColour(paintedRect, STATE_BOXCOLOUR_G);
+		
+		DrawUIBoxAndOutline(&colourInfoRectB, &infoRectOutline, paintedRect);
+		if (PointRectCollF(&colourInfoRectB.rect, &globalWindow->mousePos) && globalWindow->mouseButtons[0])
+			ChangeBoxColour(paintedRect, STATE_BOXCOLOUR_B);	
 	}
 
 	SDL_SetRenderDrawColor(globalWindow->renderer, 0x4c, 0x00, 0xb0, 255);

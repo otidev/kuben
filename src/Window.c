@@ -77,6 +77,9 @@ static void HandleWindowEvents() {
 			case SDL_KEYUP:
 				globalWindow->keys[globalWindow->event.key.keysym.scancode] = false;
 				break;
+			case SDL_TEXTINPUT:
+				strcat(globalWindow->textInput, globalWindow->event.text.text);
+				break;
 		}
 	}
 }

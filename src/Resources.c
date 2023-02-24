@@ -23,3 +23,13 @@ bool PointRectCollF(SDL_FRect* rect, Vec2* point) {
 	else
 		return false;
 }
+
+void CenterHoriz(SDL_Rect* a, SDL_Rect* b) {
+	a->x = b->x;
+	a->x += (b->w - a->w) / 2;
+}
+
+void CenterVert(SDL_Rect* a, SDL_Rect* b) {
+	a->y = b->y;
+	a->y += (b->h - a->h) / 2;
+}

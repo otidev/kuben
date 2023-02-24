@@ -1,6 +1,6 @@
 #include "Selection.h"
 
-void HighlightRect(Box* rects[256], Box** paintedRect, int zoomFactor) {
+void RedrawRect(Box* rects[256], Box** paintedRect, int zoomFactor) {
 	for (int i = 0; i < 256; i++) {
 		if (!rects[i]) {
 			break;

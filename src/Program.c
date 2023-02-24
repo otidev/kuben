@@ -19,23 +19,13 @@ Box* rects[256];
 Box* paintedRect;
 char infoString[1000];
 char rectInfoString[1000];
+char* saveFilename;
 bool redrawingRect = false;
 SDL_Texture* editRenderTex;
 
 int frameWidth, frameHeight;
 
-void CenterHoriz(SDL_Rect* a, SDL_Rect* b) {
-	a->x = b->x;
-	a->x += (b->w - a->w) / 2;
-}
-
-void CenterVert(SDL_Rect* a, SDL_Rect* b) {
-	a->y = b->y;
-	a->y += (b->h - a->h) / 2;
-}
-
-
-int InitEverything(char* spriteName, int _frameWidth, int _frameHeight) {
+int InitEverything(char* spriteName, int _frameWidth, int _frameHeight, char* _saveFilename) {
 	if (InitWindow(&window, 1280, 720, "Kuben"))
 		return 1;
 	
@@ -50,6 +40,8 @@ int InitEverything(char* spriteName, int _frameWidth, int _frameHeight) {
 	CreateText(&infoText, infoString, 600, (SDL_Colour){255, 255, 255, 255});
 
 	ChangeFrame(&editSprite, frameWidth, frameHeight, 0);
+
+	saveFilename = _saveFilename;
 
 	SDL_StartTextInput();
 
@@ -73,31 +65,9 @@ void DestroyEverything() {
 	SDL_Quit();
 }
 
-int main(int argc, char** argv) {
-	if (argc < 5) {
-		fprintf(stderr, "Usage: ./kuben <srcFile> <frameWidth> <frameHeight> <outputFile>");
-		return 1;
-	}
-
-	if (InitEverything(argv[1], atoi(argv[2]), atoi(argv[3])) == 1) return 1;
-
-
-	imageDestRect = (SDL_Rect){0, 0, frameWidth * zoomFactor, frameHeight * zoomFactor};
-	CenterHoriz(&imageDestRect, &(SDL_Rect){0, 0, window.width, window.height});
-	CenterVert(&imageDestRect, &(SDL_Rect){0, 0, window.width, window.height});
-	LoadData(rects, &infoText, infoString, argv[4]);
-	while (WindowIsOpen()) {
-		uint64_t timeStart = SDL_GetTicks64();
-
-		// Clear
-		SDL_SetRenderDrawColor(window.renderer, 0x4c, 0x00, 0xb0, 255);
-		SDL_RenderClear(window.renderer);
-
-		imageDestRect.w = frameWidth * zoomFactor;
-		imageDestRect.h = frameHeight * zoomFactor;
-		printf("%d\n", GetFrame(&editSprite));
-
-		// Painting calculations
+// This is the actual painting of rects, not drawing them.
+void PaintRectLit() {
+	if (!(PointRectCollF(&topBarRect.rect, &globalWindow->mousePos) || PointRectCollF(&bottomBarRect.rect, &globalWindow->mousePos))) {
 		if (window.mouseButtons[0]) {
 			if (!drawRect) {
 				drawRect = true;
@@ -133,8 +103,83 @@ int main(int argc, char** argv) {
 			redrawingRect = false;
 			drawRect = false;
 		}
+	}
+}
 
-		HighlightRect(rects, &paintedRect, zoomFactor);
+void Render() {
+	SDL_SetRenderTarget(window.renderer, editRenderTex);
+
+	SDL_SetRenderDrawColor(window.renderer, 0x4c, 0x00, 0xb0, 255);
+	SDL_RenderClear(window.renderer);
+
+	SDL_RenderCopy(window.renderer, editSprite.bitmap, &editSprite.rect, NULL);
+	
+	SDL_SetRenderTarget(window.renderer, NULL);
+
+	SDL_RenderCopy(window.renderer, editRenderTex, NULL, &imageDestRect);
+
+	DrawGrid((SDL_FRect){imageDestRect.x, imageDestRect.y, imageDestRect.w, imageDestRect.h}, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h);
+
+	// Draw cursor
+	SDL_SetRenderDrawColor(window.renderer, 255, 255, 255, 255);
+	SDL_RenderFillRectF(window.renderer, &(SDL_FRect){
+		TransposePixelGrid(window.mousePos, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h).x,
+		TransposePixelGrid(window.mousePos, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h).y,
+		zoomFactor * frameWidth / editSprite.rect.w,
+		zoomFactor * frameHeight / editSprite.rect.h,
+	});
+	SDL_SetRenderDrawColor(window.renderer, 0x4c, 0x00, 0xb0, 255);
+
+	for (int i = 0; i < 256; i++) {
+		if (rects[i] != NULL) {
+			DrawPaintRect(rects[i], &editSprite, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h);
+		}
+	}
+
+	DrawUIRects(infoText.sprite.height, &boxInfoText, boxInfoTextEmpty, paintedRect);
+	SDL_RenderCopy(window.renderer, infoText.sprite.bitmap, NULL, &(SDL_Rect){0, 0, infoText.sprite.width, infoText.sprite.height});
+	SDL_RenderCopy(window.renderer, boxInfoText.sprite.bitmap, NULL, &boxInfoText.sprite.rect);
+
+	SDL_RenderPresent(window.renderer);
+}
+
+void DetermineWindowStateFuncs() {
+	if (window.state == STATE_BOXCOLOUR_R || window.state == STATE_BOXCOLOUR_G || window.state == STATE_BOXCOLOUR_B || window.state == STATE_BOXCOLOUR_A) {
+		ChangeBoxColour(paintedRect, window.state);
+		return;
+	} if (window.state == STATE_SAVE_YN) {
+		SaveData(rects, &infoText, infoString, saveFilename);
+	} if (window.state == STATE_SAVEAS) {
+		SaveDataAs(rects, &infoText, infoString, saveFilename);
+	}
+}
+
+int main(int argc, char** argv) {
+	if (argc < 5) {
+		fprintf(stderr, "Usage: ./kuben <srcFile> <frameWidth> <frameHeight> <outFile>");
+		return 1;
+	}
+
+	if (InitEverything(argv[1], atoi(argv[2]), atoi(argv[3]), argv[4]) == 1) return 1;
+
+
+	imageDestRect = (SDL_Rect){0, 0, frameWidth * zoomFactor, frameHeight * zoomFactor};
+	CenterHoriz(&imageDestRect, &(SDL_Rect){0, 0, window.width, window.height});
+	CenterVert(&imageDestRect, &(SDL_Rect){0, 0, window.width, window.height});
+	LoadData(rects, &infoText, infoString, saveFilename);
+	while (WindowIsOpen()) {
+		uint64_t timeStart = SDL_GetTicks64();
+
+		// Clear
+		SDL_SetRenderDrawColor(window.renderer, 0x4c, 0x00, 0xb0, 255);
+		SDL_RenderClear(window.renderer);
+
+		imageDestRect.w = frameWidth * zoomFactor;
+		imageDestRect.h = frameHeight * zoomFactor;
+		printf("%d\n", GetFrame(&editSprite));
+
+
+		RedrawRect(rects, &paintedRect, zoomFactor);
 
 		if (paintedRect) {
 			snprintf(rectInfoString, 1000, "Rect dimensions = %d, %d, %d, %d\nIdentifier = %d\nColours: 0x%02x, 0x%02x, 0x%02x",
@@ -150,118 +195,75 @@ int main(int argc, char** argv) {
 		}
 		CreateText(&boxInfoText, rectInfoString, 600, (SDL_Colour){255, 255, 255, 255});
 
+		printf("%s", window.textInput);
+
 		boxInfoText.sprite.rect.y = globalWindow->height - 75;
-
-		// Frame jumping
-		if (window.keys[SDL_SCANCODE_LEFT]) {
-			ChangeFrame(&editSprite, frameWidth, frameHeight, -1);
-		} if (window.keys[SDL_SCANCODE_RIGHT]) {
-			ChangeFrame(&editSprite, frameWidth, frameHeight, 1);
-		}
 		
-		HandlePanning(&zoomFactor, &imageDestRect, &editSprite, rects);
+		if (window.state == STATE_NORMAL) {
+			// Painting calculations
+			PaintRectLit();
 
-		// Recenter sprite
-		if (window.keys[SDL_SCANCODE_RETURN]) {
-			Vec2 offset;
-			offset.x = imageDestRect.x;
-			offset.y = imageDestRect.y;
-
-			CenterHoriz(&imageDestRect, &(SDL_Rect){0, 0, window.width, window.height});
-			CenterVert(&imageDestRect, &(SDL_Rect){0, 0, window.width, window.height});
-			imageDestRect.x = TransposePixelGrid((Vec2){imageDestRect.x, imageDestRect.y}, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameWidth / editSprite.rect.w).x;
-			imageDestRect.y = TransposePixelGrid((Vec2){imageDestRect.x, imageDestRect.y}, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h).y;
+			// Frame jumping
+			if (window.keys[SDL_SCANCODE_LEFT]) {
+				ChangeFrame(&editSprite, frameWidth, frameHeight, -1);
+			} if (window.keys[SDL_SCANCODE_RIGHT]) {
+				ChangeFrame(&editSprite, frameWidth, frameHeight, 1);
+			}
 			
-			offset.x -= imageDestRect.x;
-			offset.y -= imageDestRect.y;
+			HandlePanning(&editSprite, rects);
 
-			for (int i = 0; i < 256; i++) {
-				if (rects[i]) {
-					rects[i]->rect.x -= offset.x;
-					rects[i]->rect.w -= offset.x;
-					rects[i]->rect.y -= offset.y;
-					rects[i]->rect.h -= offset.y;
-					// rects[i]->rect.y += *zoomFactor * sprite->height / frameHeight;
-					// rects[i]->rect.h += *zoomFactor * sprite->height / frameHeight;
-				}
+			// Recenter sprite
+			if (window.keys[SDL_SCANCODE_RETURN]) {
+				RecenterSprite(&editSprite, rects);
+				ChangeBoxColour(NULL, 0);
 			}
-		}
 
-		if (window.keys[SDL_SCANCODE_DELETE]) {
-			drawRect = true;
-			for (int i = 0; i < 256; i++) {
-				if (rects[i]) {
-					rects[i] = &(Box){0};
-					free(rects[i]);
-					rects[i] = NULL;
+			if (window.keys[SDL_SCANCODE_DELETE]) {
+				drawRect = true;
+				paintedRect = NULL;
+				for (int i = 0; i < 256; i++) {
+					if (rects[i]) {
+						free(rects[i]);
+						*rects[i] = (Box){0};
+						rects[i] = NULL;
+					}
 				}
 			}
 
-			paintedRect = NULL;
-		}
-
-		if (window.keys[SDL_SCANCODE_F11]) {
-			if (window.fullscreen == true) {
-				SDL_SetWindowFullscreen(window.window, 0);
-				window.width = 1280;
-				window.height = 720;
-				SDL_SetWindowSize(window.window, window.width, window.height);
-				window.fullscreen = false;
-			} else {
-				SDL_SetWindowFullscreen(window.window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-				SDL_GetWindowSize(window.window, &window.width, &window.height);
-				window.fullscreen = true;
+			if (window.keys[SDL_SCANCODE_F11]) {
+				if (window.fullscreen == true) {
+					SDL_SetWindowFullscreen(window.window, 0);
+					window.width = 1280;
+					window.height = 720;
+					SDL_SetWindowSize(window.window, window.width, window.height);
+					window.fullscreen = false;
+				} else {
+					SDL_SetWindowFullscreen(window.window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+					SDL_GetWindowSize(window.window, &window.width, &window.height);
+					window.fullscreen = true;
+				}
 			}
-		}
 
-		// HandleZooming(&zoomFactor, &imageDestRect, &editSprite, rects);
+			// HandleZooming(&editSprite, rects);
 
-		SDL_SetRenderTarget(window.renderer, editRenderTex);
-
-		SDL_SetRenderDrawColor(window.renderer, 0x4c, 0x00, 0xb0, 255);
-		SDL_RenderClear(window.renderer);
-
-		SDL_RenderCopy(window.renderer, editSprite.bitmap, &editSprite.rect, NULL);
-		
-		SDL_SetRenderTarget(window.renderer, NULL);
-
-		SDL_RenderCopy(window.renderer, editRenderTex, NULL, &imageDestRect);
-
-		DrawGrid((SDL_FRect){imageDestRect.x, imageDestRect.y, imageDestRect.w, imageDestRect.h}, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h);
-
-		// Draw cursor
-		SDL_SetRenderDrawColor(window.renderer, 255, 255, 255, 255);
-		SDL_RenderFillRectF(window.renderer, &(SDL_FRect){
-			TransposePixelGrid(window.mousePos, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h).x,
-			TransposePixelGrid(window.mousePos, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h).y,
-			zoomFactor * frameWidth / editSprite.rect.w,
-			zoomFactor * frameHeight / editSprite.rect.h,
-		});
-		SDL_SetRenderDrawColor(window.renderer, 0x4c, 0x00, 0xb0, 255);
-
-		for (int i = 0; i < 256; i++) {
-			if (rects[i] != NULL) {
-				DrawPaintRect(rects[i], &editSprite, zoomFactor * frameWidth / editSprite.rect.w, zoomFactor * frameHeight / editSprite.rect.h);
+			if (window.keys[SDL_SCANCODE_LCTRL] && window.keys[SDL_SCANCODE_S]) {
+				if (window.keys[SDL_SCANCODE_LSHIFT])
+					SaveDataAs(rects, &infoText, infoString, saveFilename);
+				else
+					SaveData(rects, &infoText, infoString, saveFilename);
 			}
+		} else {
+			DetermineWindowStateFuncs();
 		}
 
-		DrawUIRects(infoText.sprite.height, &boxInfoText, boxInfoTextEmpty);
-		SDL_RenderCopy(window.renderer, infoText.sprite.bitmap, NULL, &(SDL_Rect){0, 0, infoText.sprite.width, infoText.sprite.height});
-		SDL_RenderCopy(window.renderer, boxInfoText.sprite.bitmap, NULL, &boxInfoText.sprite.rect);
-
-		if (window.keys[SDL_SCANCODE_LCTRL] && window.keys[SDL_SCANCODE_S])
-			SaveData(rects, &infoText, infoString, argv[4]);
-
-		SDL_RenderPresent(window.renderer);
+		Render();
 
 		uint64_t timeEnd = SDL_GetTicks64();
-
+		
 		float timeElapsed = (timeEnd - timeStart) * 0.001;
 
 		if (1000 / FPS > SDL_GetTicks64() - timeStart)
 			SDL_Delay(1000 / FPS - timeElapsed);
 	}
-
 	DestroyEverything();
-
 }

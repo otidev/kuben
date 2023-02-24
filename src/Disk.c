@@ -1,16 +1,31 @@
 #include "Disk.h"
 
 void SaveData(Box* rects[256], Text* infoText, char* origInfoString, char* saveFilename) {
-	FILE* file = fopen(saveFilename, "wb");
-	// if (file) {
-	// 	char warningMessage[500];
-	// 	snprintf(warningMessage, 500, "Warning: The file \"%s\" exists, overwrite? (Y)es/(N)o", saveFilename);
-	// 	CreateText(infoText, warningMessage, 600, (SDL_Colour){255, 255, 255, 255});
-	// 	SDL_RenderCopy(globalWindow->renderer, infoText->sprite.bitmap, NULL, &(SDL_Rect){0, 0, infoText->sprite.width, infoText->sprite.height});
-	// }
+	if (access(saveFilename, F_OK) == 0 && (globalWindow->state != STATE_SAVEAS)) {
+		char warningMessage[500];
+		snprintf(warningMessage, 500, "Warning: The file \"%s\" exists, overwrite? (Y)es/(N)o", saveFilename);
+		CreateText(infoText, warningMessage, 600, (SDL_Colour){255, 255, 255, 255});
+	
+		if (globalWindow->state == STATE_SAVE_YN) {
+			if (globalWindow->keys[SDL_SCANCODE_Y]) {
+				globalWindow->state = STATE_NORMAL;
+			} else if (globalWindow->keys[SDL_SCANCODE_N]) {
+				globalWindow->state = STATE_NORMAL;
+				CreateText(infoText, origInfoString, 600, (SDL_Colour){255, 255, 255, 255});
+				return;
+			} else {
+				return;
+			}
+		} else {
+			globalWindow->state = STATE_SAVE_YN;
+			return;
+		}
+	}
 
+	FILE* file = fopen(saveFilename, "wb");
+	
 	uint8_t i;
-	for (i = 0; i < 256; i++) {
+	for (i = 0;; i++) {
 		// If the next box is nulled, we have the last used box and break
 		if (rects[i] == NULL)
 			break;
@@ -45,6 +60,10 @@ void SaveData(Box* rects[256], Text* infoText, char* origInfoString, char* saveF
 		}
 	}
 
+	char savedSMessage[500];
+	snprintf(savedSMessage, 500, "Saved data to -> %s", saveFilename);
+	CreateText(infoText, savedSMessage, 600, (SDL_Colour){255, 255, 255, 255});
+
 	fwrite(fileBuf, fileSize, 1, file);
 	fclose(file);
 }
@@ -60,6 +79,13 @@ void LoadData(Box* rects[256], Text* infoText, char* origInfoString, char* saveF
 	char fileBuf[fileSize];
 	int locationInFile = 0;
 	fread(fileBuf, sizeof(char), fileSize, file);
+
+	if (fileSize <= 0) {
+		char errorMessage[500];
+		snprintf(errorMessage, 500, "Error: The file \"%s\" doesn't exist", saveFilename);
+		CreateText(infoText, errorMessage, 600, (SDL_Colour){255, 255, 255, 255});
+		return;
+	}
 
 	KBN_Header header;
 	memcpy(&header, fileBuf + locationInFile, sizeof(KBN_Header));
@@ -82,11 +108,6 @@ void LoadData(Box* rects[256], Text* infoText, char* origInfoString, char* saveF
 		KBN_Box box;
 		SDL_zero(box); // Could've used memset but who cares
 		memcpy(&box, fileBuf + locationInFile, sizeof(KBN_Box));
-		
-		printf("%d, %d, %d, %d\n", (box.x * zoomFactor * (frameWidth / editSprite.rect.w)) + imageDestRect.x,
-				(box.y * zoomFactor * (frameHeight / editSprite.rect.h)) + imageDestRect.y,
-				(box.w * zoomFactor * (frameWidth / editSprite.rect.w)) + imageDestRect.x - ((box.x * zoomFactor * (frameWidth / editSprite.rect.w)) + imageDestRect.x),
-				(box.h * zoomFactor * (frameHeight / editSprite.rect.h)) + imageDestRect.y - ((box.y * zoomFactor * (frameHeight / editSprite.rect.h)) + imageDestRect.y));
 
 		rects[j] = malloc(sizeof(Box));
 		Box* tempBox = &(Box) {
@@ -105,5 +126,55 @@ void LoadData(Box* rects[256], Text* infoText, char* origInfoString, char* saveF
 		
 		locationInFile += sizeof(KBN_Box);
 	}
+
+	char loadedSMessage[500];
+	snprintf(loadedSMessage, 500, "Loaded data from -> %s", saveFilename);
+	CreateText(infoText, loadedSMessage, 600, (SDL_Colour){255, 255, 255, 255});
+}
+
+void ChangeSaveFilename(Text* infoText, char* saveFilename) {
+	if (globalWindow->state != STATE_CHANGESAVE && globalWindow->state != STATE_SAVEAS) {
+		memset(globalWindow->textInput, 0, sizeof(char) * 500);
+		globalWindow->state = STATE_CHANGESAVE;
+	}
+
+	char changeFilenameMessage[500];
+	char changeFilenameTmp[400];
+	memset(changeFilenameTmp, 0, sizeof(char) * 400);
+
+	if (globalWindow->keys[SDL_SCANCODE_BACKSPACE]) {
+		for (int i = 0; i < 500; i++) {
+			if (globalWindow->textInput[i] == 0) {
+				globalWindow->textInput[i - 1] = 0;
+				break;
+			}
+		}
+	}
+
+	memcpy(changeFilenameTmp, globalWindow->textInput, sizeof(char) * 400);
+
+	snprintf(changeFilenameMessage, 500, "Change saving filename to -> %s", (changeFilenameTmp[0]) ? (changeFilenameTmp) : (" "));
+	CreateText(infoText, changeFilenameMessage, 600, (SDL_Colour){255, 255, 255, 255});
+
+	if (globalWindow->keys[SDL_SCANCODE_RETURN]) {
+		memcpy(saveFilename, changeFilenameTmp, sizeof(char) * 400);
+		globalWindow->state = STATE_NORMAL;
+		
+		snprintf(changeFilenameMessage, 500, "Changed filename to -> %s", changeFilenameTmp);
+		CreateText(infoText, changeFilenameMessage, 600, (SDL_Colour){255, 255, 255, 255});
+	}
+}
+
+void SaveDataAs(Box* rects[256], Text* infoText, char* origInfoString, char* saveFilename) {
+	if (globalWindow->state != STATE_SAVEAS) {
+		memset(globalWindow->textInput, 0, sizeof(char) * 500);
+		globalWindow->state = STATE_SAVEAS;
+	}
 	
+	ChangeSaveFilename(infoText, saveFilename);
+
+	if (globalWindow->state == STATE_SAVEAS)
+		return;
+
+	SaveData(rects, infoText, origInfoString, saveFilename);
 }
