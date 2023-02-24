@@ -3,3 +3,4 @@ This file lists all dependencies of this project and its license (in full form i
 SDL2/SDL2main uses the zlib license: check in headers
 SDL2_ttf uses the zlib license: check in headers
 SDL2_image uses the zlib license: check in headers
+SourceCodePro uses the SIL Open Font License (OFL), check it here: https://github.com/adobe-fonts/source-code-pro/blob/release/LICENSE.md
