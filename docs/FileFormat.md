@@ -31,7 +31,7 @@ Box
 | 6 in box | 4   | Height of box | Height of box (in pixels) |
 | 7 in box | 16   | Colour | The colour of the box (arranged RGBA8888) |
 
-## Things to take not of
+## Things to take note of
 
 - Because the number of boxes are 1 byte long, only 256 total boxes can be made
 - There can be a maximum of  4,294,967,295 frames in the program. (unsigned int)
